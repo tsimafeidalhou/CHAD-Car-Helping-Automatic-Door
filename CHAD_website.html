@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Simple Garage Parking Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; background:#071026; color:#e6eef6; padding:20px; }
+    .panel { background: rgba(255,255,255,0.03); padding:16px; border-radius:10px; max-width:540px; margin:0 auto; }
+    .indicator { height:160px; border-radius:8px; display:flex;align-items:center;justify-content:center;flex-direction:column; }
+    .big { font-size:36px; font-weight:700; }
+    .small { font-size:14px; color:#bcd0df; margin-top:8px; }
+    .controls { margin-top:12px; display:flex; gap:8px; }
+    button { padding:10px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }
+    .danger { background:#e53e3e; color:white; }
+    .primary { background:#0b6bf0; color:white; }
+    .log { margin-top:12px; background:rgba(0,0,0,0.15); padding:8px; border-radius:6px; font-family:monospace; font-size:13px; max-height:160px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h2>Garage Parking — Simple View</h2>
+
+    <script>
+      var deviceID = "0a10aced202194944a057944";
+      var accessToken = "bb3ebbaf3ddc3cdd3b98ed539907f5e1242fc767";
+      var apiBase = "https://api.particle.io/v1/devices/";
+    </script>
+
+    <div id="indicator" class="indicator" style="background:gray;">
+      <div id="ledLabel" class="big">UNKNOWN</div>
+      <div id="distanceText" class="small">-- cm</div>
+      <div id="hint" class="small">Waiting for device...</div>
+    </div>
+
+    <div class="controls">
+      <button id="refreshBtn" class="primary">Refresh Now</button>
+      <button id="forceBtn" class="danger">Force Close (Manual)</button>
+    </div>
+
+    <div style="margin-top:12px;">
+      <div><strong>Variables</strong></div>
+      <div>distance: <span id="varDistance">--</span></div>
+      <div>ledColor: <span id="varLedColor">--</span></div>
+      <div>carPresent: <span id="varPresent">--</span></div>
+      <div style="margin-top:8px;" class="small">Device: <code id="deviceIdShow"></code></div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+<script>
+function log(msg){
+  var t = new Date().toLocaleTimeString();
+  $("#log").prepend("[" + t + "] " + msg + "\n");
+}
+
+function getVariable(varName){
+  return $.ajax({
+    url: apiBase + deviceID + "/" + varName,
+    method: "GET",
+    headers: { "Authorization": "Bearer " + accessToken }
+  });
+}
+
+function callFunction(funcName, args){
+  return $.ajax({
+    url: apiBase + deviceID + "/" + funcName,
+    method: "POST",
+    headers: { "Authorization": "Bearer " + accessToken },
+    data: { args: args || "" }
+  });
+}
+
+function applyState(distance, ledColor, carPresent){
+  var d = parseFloat(distance);
+  if (!isFinite(d) || d === 0) {
+    $("#distanceText").text("-- cm (out of range)");
+  } else {
+    $("#distanceText").text(d.toFixed(1) + " cm");
+  }
+
+  $("#varDistance").text(distance);
+  $("#varLedColor").text(ledColor);
+  $("#varPresent").text(carPresent);
+
+  let bg="gray", label="UNKNOWN", hint="No data";
+  let color = (""+ledColor).toLowerCase();
+
+  // ✅ Use device-reported ledColor ONLY
+  switch(color){
+    case "green":
+      bg="linear-gradient(180deg,#16a34a,#059669)";
+      label="GREEN";
+      hint="GREEN — Safe / keep moving";
+      break;
+    case "yellow":
+      bg="linear-gradient(180deg,#f59e0b,#d97706)";
+      label="YELLOW";
+      hint="YELLOW — Slow down";
+      break;
+    case "red":
+      bg="linear-gradient(180deg,#ef4444,#c02121)";
+      label="RED";
+      hint="RED — Stop";
+      break;
+    default:
+      bg="gray";
+      label="UNKNOWN";
+      hint="No data";
+  }
+
+  $("#indicator").css("background", bg);
+  $("#ledLabel").text(label);
+  $("#hint").text(hint);
+}
+
+
+function pollAll(){
+  $.when(
+    getVariable("distance").fail(x=>log("distance error: "+x.responseText)),
+    getVariable("ledColor").fail(x=>log("ledColor error: "+x.responseText)),
+    getVariable("carPresent").fail(x=>log("carPresent error: "+x.responseText))
+  ).done(function(distR, ledR, presR){
+    try {
+      var dist = distR[0].result;
+      var led  = ledR[0].result;
+      var pres = presR[0].result;
+      $("#deviceIdShow").text(deviceID);
+      applyState(dist, led, pres);
+      log("polled: distance=" + dist + " ledColor=" + led + " carPresent=" + pres);
+    } catch(e) {
+      log("parse error: " + e);
+    }
+  });
+}
+
+$("#refreshBtn").click(()=>pollAll());
+
+$("#forceBtn").click(function(){
+  if (!confirm("Force close now? Make sure area is clear.")) return;
+  callFunction("closeDoor","")
+    .done(res=>{
+      log("closeDoor response: " + JSON.stringify(res));
+      alert("closeDoor returned: " + res.return_value);
+    })
+    .fail(x=>{
+      log("closeDoor error: " + x.responseText);
+      alert("Error: " + x.responseText);
+    });
+});
+
+pollAll();
+setInterval(pollAll, 1500);
+</script>
+</body>
+</html>
+
