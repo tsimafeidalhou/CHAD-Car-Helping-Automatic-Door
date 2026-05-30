@@ -97,25 +97,17 @@ void loop() {
        
         updateLED(currentDistance);
        
-        // Print status
-        Serial.print("Distance: ");
-        Serial.print(currentDistance);
-        Serial.print(" cm | Color: ");
-        Serial.print(currentColor);
-        Serial.print(" | Last: ");
-        Serial.println(lastColor);
        
         // Check for color changes
         if (currentColor != lastColor) {
             Serial.print(">>> COLOR CHANGED: ");
             Serial.print(lastColor);
-            Serial.print(" -> ");
             Serial.println(currentColor);
            
             // APPROACHING: Green->Yellow OR Yellow->Red
             if ((lastColor == "green" && currentColor == "yellow") ||
                 (lastColor == "yellow" && currentColor == "red")) {
-                Serial.println("*** APPROACHING - STARTING 30 SEC TIMER ***");
+                Serial.println("APPROACHING - STARTING 30 SEC TIMER");
                 colorChangeTime = now;
                 timerActive = true;
             }
@@ -123,7 +115,7 @@ void loop() {
             // DEPARTING: Red->Yellow OR Yellow->Green
             else if ((lastColor == "red" && currentColor == "yellow") ||
                      (lastColor == "yellow" && currentColor == "green")) {
-                Serial.println("*** DEPARTING - STARTING 30 SEC TIMER ***");
+                Serial.println("DEPARTING - STARTING 30 SEC TIMER");
                 colorChangeTime = now;
                 timerActive = true;
             }
@@ -133,7 +125,7 @@ void loop() {
        
         // Check if timer expired
         if (timerActive && (now - colorChangeTime >= TIMER_WAIT)) {
-            Serial.println("*** TIMER EXPIRED - PRESSING BUTTON ***");
+            Serial.println("TIMER EXPIRED - PRESSING BUTTON");
             Particle.publish("garage/status", "Timer expired - closing", PRIVATE);
             pressGarageDoorButton();
             timerActive = false;
@@ -193,12 +185,10 @@ void pressGarageDoorButton() {
     doorServo.write(SERVO_REST);
     delay(300);
    
-    Serial.println(">>> BUTTON PRESS COMPLETE <<<");
 }
 
 
 int manualCloseDoor(String command) {
-    Serial.println("*** MANUAL CLOSE REQUESTED ***");
     pressGarageDoorButton();
     Particle.publish("garage/status", "Manual close", PRIVATE);
     return 1;
