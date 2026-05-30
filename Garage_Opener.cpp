@@ -184,11 +184,6 @@ void updateLED(float distance) {
 
 
 void pressGarageDoorButton() {
-    Serial.println(">>> PRESSING BUTTON NOW <<<");
-    Serial.print("Moving servo from ");
-    Serial.print(SERVO_REST);
-    Serial.print(" to ");
-    Serial.println(SERVO_PRESS);
    
     doorServo.write(SERVO_PRESS);
     delay(PRESS_DURATION);
