@@ -139,18 +139,18 @@ function pollAll(){
 $("#refreshBtn").click(()=>pollAll());
 
 $("#forceBtn").click(function(){
-  if (!confirm("Force close now? Make sure area is clear.")) return;
+  // The confirmation prompt has been removed, so the function runs immediately
   callFunction("closeDoor","")
     .done(res=>{
+      // Logs the success to the grey box without a screen pop-up
       log("closeDoor response: " + JSON.stringify(res));
-      alert("closeDoor returned: " + res.return_value);
     })
     .fail(x=>{
+      // Logs the error to the grey box without a screen pop-up
       log("closeDoor error: " + x.responseText);
-      alert("Error: " + x.responseText);
     });
 });
-
+  
 pollAll();
 setInterval(pollAll, 1500);
 </script>
